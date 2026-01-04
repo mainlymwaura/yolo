@@ -11,7 +11,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: mainlymwaura/yolo-backend:1.0.0
+    image: mainlymwaura/yolo-backend:1.0.1
     environment:
       - PORT=5000
       - MONGODB_URI=mongodb://mongo:27017/yolomy
