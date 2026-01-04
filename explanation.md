@@ -54,4 +54,12 @@ This document explains the design decisions and implementation for containerizin
 
 If anything above needs extra detail for the submission, tell me which rubric item you want expanded and I'll add it to this file.
 
+## Submission checklist
+
+- Ensure `docker-compose.yml` is pushed to repo root and points to images you want to use (we use `mainlymwaura/yolo-backend:1.0.1` and `mainlymwaura/yolo-client:1.0.0`).
+- Push Docker images to DockerHub and capture a screenshot showing the tag(s) (save as `docs/dockerhub_screenshot.png`).
+- Confirm the GitHub Actions workflow `docker-publish.yml` is configured with your DockerHub secrets (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`) if you want CI publishing.
+- Run the smoke tests locally or via the `stack-smoke-test.yml` workflow to confirm endpoints respond.
+
+
 Notes: Replace `your-dockerhub-username` in `docker-compose.yml` and tagging commands with your DockerHub username before pushing the images.
