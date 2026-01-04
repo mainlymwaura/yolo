@@ -1,0 +1,8 @@
+Place a screenshot of your DockerHub repository here showing the image tags (e.g. mainy_mwaura/yolo-backend:1.0.0 and mainlymwaura/yolo-client:1.0.0).
+
+Recommended filename: docs/dockerhub_screenshot.png
+
+How to get the screenshot:
+1) Go to https://hub.docker.com/ and open your repository (e.g., mainlymwaura/yolo-backend).
+2) Take a screenshot showing the list of tags and the selected tag (1.0.0).
+3) Save it as `docs/dockerhub_screenshot.png` and commit it to the repo.

@@ -1,0 +1,3 @@
+Place your DockerHub repo screenshot here named `dockerhub_screenshot.png`.
+
+Required: the screenshot must include the image name and the tag (e.g., `mainlymwaura/yolo-backend:1.0.0`).
