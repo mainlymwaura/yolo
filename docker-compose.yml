@@ -26,8 +26,8 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
-      image: mainlymwaura/yolo-backend:1.0.0
-        - REACT_APP_API_URL=http://localhost:5000
+      args:
+        REACT_APP_API_URL: http://localhost:5000
     image: mainlymwaura/yolo-client:1.0.0
     ports:
       - "3000:80"
@@ -42,5 +42,3 @@ volumes:
 networks:
   yolo-net:
     driver: bridge
-
-      image: mainlymwaura/yolo-client:1.0.0
