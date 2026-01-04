@@ -5,7 +5,8 @@ import NewProductForm from './NewProductForm';
 import ProductDetail from './ProductDetail';
 import AddProduct from './AddProduct';
 import EditProductForm from './EditProductForm';
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Use an explicit build-time API URL if provided, otherwise use relative path
+const API_BASE = process.env.REACT_APP_API_URL || '';
 // import tshirt from '../images/products/tshirt.png';
 // import backpack from '../images/products/backpack.png';
 // import pants from '../images/products/pants.png';
