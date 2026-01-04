@@ -27,7 +27,7 @@ Replace `username` with your DockerHub username and run:
 
 ```bash
 # backend
-docker build -t username/yolo-backend:1.0.0 ./backend
+docker build -t username/yolo-backend:1.0.1 ./backend
 docker push username/yolo-backend:1.0.0
 
 # client
