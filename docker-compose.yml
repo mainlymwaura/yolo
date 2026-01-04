@@ -1,0 +1,44 @@
+services:
+  mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - yolo-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: mainlymwaura/yolo-backend:1.0.0
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/yolomy
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+    networks:
+      - yolo-net
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:5000
+    image: mainlymwaura/yolo-client:1.0.0
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - yolo-net
+
+volumes:
+  mongo-data:
+
+networks:
+  yolo-net:
+    driver: bridge
