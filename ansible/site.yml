@@ -10,6 +10,13 @@
     - group_vars/all.yml
 
   pre_tasks:
+    - name: "Install Ansible Galaxy requirements"
+      command: "ansible-galaxy collection install -r requirements.yml"
+      args:
+        chdir: "{{ playbook_dir }}"
+      changed_when: false
+      tags: ["always", "setup"]
+
     - name: "Update system packages"
       block:
         - name: "Update apt cache"

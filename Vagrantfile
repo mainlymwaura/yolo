@@ -20,11 +20,23 @@ Vagrant.configure("2") do |config|
   # Synced folder for the application
   config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
   
+  # Install Python and required dependencies
+  config.vm.provision "shell", inline: <<-SHELL
+    apt-get update
+    apt-get install -y python3 python3-pip git
+    pip3 install --upgrade pip
+    pip3 install docker pyyaml
+  SHELL
+  
   # Provisioning with Ansible
   config.vm.provision "ansible_local" do |ansible|
     ansible.playbook = "ansible/site.yml"
     ansible.inventory_path = "ansible/inventory.ini"
     ansible.install = true
+    ansible.install_mode = "pip3"
     ansible.version = "latest"
+    ansible.extra_vars = {
+      ansible_python_interpreter: "/usr/bin/python3"
+    }
   end
 end

@@ -48,6 +48,11 @@
         groups: docker
         append: yes
 
+    - name: "Wait for Docker daemon to be ready"
+      wait_for:
+        path: /var/run/docker.sock
+        delay: 2
+
   tags: ["docker-config"]
 
 - name: "Install Docker Compose"
@@ -59,7 +64,7 @@
         mode: '0755'
 
     - name: "Verify Docker Compose installation"
-      command: docker-compose --version
+      command: /usr/local/bin/docker-compose --version
       register: docker_compose_version_check
       changed_when: false
 
@@ -76,7 +81,5 @@
         name: "{{ docker_network }}"
         driver: bridge
         state: present
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
   tags: ["docker-network"]

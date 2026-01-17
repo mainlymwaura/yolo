@@ -17,8 +17,6 @@
         name: "{{ mongodb_image }}"
         source: pull
         state: present
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
   tags: ["mongodb-setup"]
 
@@ -36,11 +34,6 @@
           - name: "{{ docker_network }}"
         ports:
           - "{{ mongodb_port }}:{{ mongodb_port }}"
-        env:
-          MONGO_INITDB_ROOT_USERNAME: "admin"
-          MONGO_INITDB_ROOT_PASSWORD: "password"
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
     - name: "Wait for MongoDB to be ready"
       wait_for:

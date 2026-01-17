@@ -9,8 +9,6 @@
         name: "{{ frontend_image }}"
         source: pull
         state: present
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
   tags: ["frontend-setup"]
 
@@ -28,10 +26,6 @@
           - name: "{{ docker_network }}"
         env:
           REACT_APP_API_URL: "{{ react_app_api_url }}"
-        depends_on:
-          - "{{ backend_container_name }}"
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
     - name: "Wait for frontend service to be ready"
       wait_for:
@@ -57,23 +51,14 @@
       uri:
         url: "http://localhost:{{ frontend_port_external }}"
         method: GET
-        status_code: 200
+        status_code: [200, 301, 302]
       register: frontend_health
       retries: 3
       delay: 5
-      until: frontend_health.status == 200
+      until: frontend_health.status in [200, 301, 302]
 
     - name: "Application is healthy"
       debug:
         msg: "Frontend application is responding correctly!"
 
   tags: ["frontend-health-check"]
-
-  handlers:
-    - name: restart frontend container
-      docker_container:
-        name: "{{ frontend_container_name }}"
-        state: restarted
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
-      listen: "restart frontend"

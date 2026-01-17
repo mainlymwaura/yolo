@@ -1,0 +1,55 @@
+# Vagrant files
+.vagrant/
+*.box
+
+# Terraform files (Stage 2)
+Stage_two/
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+
+# Ansible files
+ansible/roles/**/defaults/
+.ansible_vault
+ansible-inventory.cache
+
+# Environment and credentials
+.env
+.env.local
+*.pem
+*.key
+*.crt
+.aws/
+.ssh/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node and Python
+node_modules/
+*.pyc
+__pycache__/
+.python-version
+venv/
+env/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build artifacts
+dist/
+build/
+
+# Docker
+docker-compose.override.yml
+.dockerignore

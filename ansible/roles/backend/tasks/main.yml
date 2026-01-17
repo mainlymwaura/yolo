@@ -33,8 +33,6 @@
         name: "{{ backend_image }}"
         source: pull
         state: present
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
   tags: ["backend-setup"]
 
@@ -54,10 +52,6 @@
           PORT: "{{ backend_port_internal }}"
           MONGODB_URI: "{{ mongodb_uri }}"
           NODE_ENV: "production"
-        depends_on:
-          - "{{ mongodb_container_name }}"
-      environment:
-        DOCKER_HOST: "unix:///run/docker.sock"
 
     - name: "Wait for backend service to be ready"
       wait_for:
