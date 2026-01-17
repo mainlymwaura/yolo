@@ -18,7 +18,10 @@ Vagrant.configure("2") do |config|
   end
   
   # Synced folder for the application
-  config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
+  config.vm.synced_folder ".", "/vagrant", type: "virtualbox", disabled: true
+  
+  # Copy ansible directory to VM
+  config.vm.provision "file", source: "ansible", destination: "/home/vagrant/ansible"
   
   # Install Python and required dependencies
   config.vm.provision "shell", inline: <<-SHELL
@@ -30,8 +33,8 @@ Vagrant.configure("2") do |config|
   
   # Provisioning with Ansible
   config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook = "ansible/site.yml"
-    ansible.inventory_path = "ansible/inventory.ini"
+    ansible.playbook = "~/ansible/site.yml"
+    ansible.inventory_path = "~/ansible/inventory.ini"
     ansible.install = true
     ansible.install_mode = "pip3"
     ansible.version = "latest"
