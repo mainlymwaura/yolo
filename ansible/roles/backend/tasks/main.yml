@@ -9,13 +9,34 @@
         path: "{{ app_deploy_dir }}"
       register: app_repo_stat
 
+    - name: "Check if repository is valid git repo"
+      stat:
+        path: "{{ app_deploy_dir }}/.git"
+      register: git_dir_stat
+
     - name: "Clone YOLO application repository"
       git:
         repo: "{{ app_repo_url }}"
         dest: "{{ app_deploy_dir }}"
         version: "{{ app_repo_branch }}"
         update: yes
-      when: not app_repo_stat.stat.exists or app_repo_stat.stat.isdir
+      when: not git_dir_stat.stat.exists
+      register: repo_cloned
+      ignore_errors: yes
+
+    - name: "Clean non-git directory and clone fresh"
+      block:
+        - name: "Remove non-git directory"
+          file:
+            path: "{{ app_deploy_dir }}"
+            state: absent
+        - name: "Clone repository fresh"
+          git:
+            repo: "{{ app_repo_url }}"
+            dest: "{{ app_deploy_dir }}"
+            version: "{{ app_repo_branch }}"
+            update: yes
+      when: (app_repo_stat.stat.exists and not git_dir_stat.stat.exists)
 
     - name: "Change repository ownership"
       file:

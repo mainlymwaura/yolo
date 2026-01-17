@@ -25,7 +25,7 @@ mongodb_port: 27017
 # MongoDB configuration
 mongodb_container_name: yolo-mongo
 mongodb_image: mongo:6.0
-mongodb_data_dir: "{{ app_deploy_dir }}/mongo-data"
+mongodb_data_dir: "{{ app_home }}/yolo-mongo-data"
 mongodb_uri: "mongodb://{{ mongodb_container_name }}:{{ mongodb_port }}/yolomy"
 
 # Backend configuration

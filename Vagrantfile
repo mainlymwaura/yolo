@@ -33,8 +33,8 @@ Vagrant.configure("2") do |config|
   
   # Provisioning with Ansible
   config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook = "~/ansible/site.yml"
-    ansible.inventory_path = "~/ansible/inventory.ini"
+    ansible.playbook = "/home/vagrant/ansible/site.yml"
+    ansible.inventory_path = "/home/vagrant/ansible/inventory.ini"
     ansible.install = true
     ansible.install_mode = "pip3"
     ansible.version = "latest"
