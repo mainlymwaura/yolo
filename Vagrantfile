@@ -31,15 +31,10 @@ Vagrant.configure("2") do |config|
     pip3 install docker pyyaml
   SHELL
   
-  # Provisioning with Ansible
-  config.vm.provision "ansible_local" do |ansible|
-    ansible.playbook = "/home/vagrant/ansible/site.yml"
-    ansible.inventory_path = "/home/vagrant/ansible/inventory.ini"
-    ansible.install = true
-    ansible.install_mode = "pip3"
-    ansible.version = "latest"
-    ansible.extra_vars = {
-      ansible_python_interpreter: "/usr/bin/python3"
-    }
-  end
+  # Install Ansible and run provisioning manually
+  config.vm.provision "shell", inline: <<-SHELL
+    pip3 install ansible
+    cd /home/vagrant/ansible
+    ansible-playbook -i inventory.ini site.yml
+  SHELL
 end
