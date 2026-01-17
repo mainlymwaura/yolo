@@ -2,17 +2,17 @@
 .vagrant/
 *.box
 
-# Terraform files (Stage 2)
-Stage_two/
-terraform/.terraform/
-terraform/.terraform.lock.hcl
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/*.tfvars
-!terraform/terraform.tfvars.example
+# Terraform files (Stage 2) - ignore state and lock files only
+Stage_two/terraform/.terraform/
+Stage_two/terraform/.terraform.lock.hcl
+Stage_two/terraform/terraform.tfstate
+Stage_two/terraform/terraform.tfstate.backup
+Stage_two/terraform/*.tfvars
+!Stage_two/terraform/*.tfvars.example
 
 # Ansible files
 ansible/roles/**/defaults/
+Stage_two/ansible/roles/**/defaults/
 .ansible_vault
 ansible-inventory.cache
 

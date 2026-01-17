@@ -1,0 +1,44 @@
+---
+# MongoDB Role Tasks for Stage 2
+
+- name: "Prepare MongoDB deployment"
+  block:
+    - name: "Create MongoDB data directory"
+      file:
+        path: "{{ mongodb_data_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    - name: "Pull MongoDB Docker image"
+      docker_image:
+        name: "{{ mongodb_image }}"
+        source: pull
+        state: present
+
+  tags: ["mongodb-setup"]
+
+- name: "Deploy MongoDB container"
+  block:
+    - name: "Start MongoDB container"
+      docker_container:
+        name: "{{ mongodb_container_name }}"
+        image: "{{ mongodb_image }}"
+        state: started
+        restart_policy: unless-stopped
+        volumes:
+          - "{{ mongodb_data_dir }}:/data/db"
+        networks:
+          - name: "{{ docker_network }}"
+        ports:
+          - "{{ mongodb_port }}:{{ mongodb_port }}"
+
+    - name: "Wait for MongoDB to be ready"
+      wait_for:
+        host: localhost
+        port: "{{ mongodb_port }}"
+        delay: 5
+        timeout: 30
+
+  tags: ["mongodb-deploy"]

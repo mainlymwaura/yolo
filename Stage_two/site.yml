@@ -1,0 +1,46 @@
+---
+# Stage 2 Master Playbook - Terraform + Ansible Integration
+# This playbook orchestrates Terraform resource provisioning and Ansible configuration
+# It demonstrates the power of combining Terraform (Infrastructure) with Ansible (Configuration)
+
+- name: "YOLO E-commerce Platform - Stage 2 (Terraform + Ansible)"
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars_files:
+    - ansible/group_vars/all.yml
+
+  pre_tasks:
+    - name: "Verify Terraform is installed"
+      command: "terraform --version"
+      changed_when: false
+      tags: ["always", "terraform-check"]
+
+    - name: "Display Terraform version"
+      debug:
+        msg: "{{ terraform_version.stdout }}"
+      vars:
+        terraform_version: "{{ lookup('pipe', 'terraform --version 2>/dev/null || echo not-installed') }}"
+      tags: ["always"]
+
+  roles:
+    - role: terraform-provisioning
+      tags: ["terraform", "infrastructure"]
+
+  post_tasks:
+    - name: "Final verification"
+      block:
+        - name: "Display deployment completion summary"
+          debug:
+            msg:
+              - "========================================="
+              - "Stage 2 Deployment Complete!"
+              - "========================================="
+              - "Infrastructure provisioned with Terraform"
+              - "Application configured with Ansible"
+              - "Frontend: http://{{ vm_ip }}:3000"
+              - "Backend API: http://{{ vm_ip }}:5000"
+              - "========================================="
+          tags: ["always"]
+
+      tags: ["verification"]

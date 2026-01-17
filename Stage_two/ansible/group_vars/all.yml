@@ -1,0 +1,53 @@
+---
+# Global variables for Stage 2 deployment
+# Extend these from Stage 1 with Terraform-specific additions
+
+app_name: yolo
+app_user: vagrant
+app_group: vagrant
+app_home: /home/vagrant
+app_repo_url: https://github.com/mainlymwaura/YOLO.git
+app_repo_branch: main
+app_deploy_dir: "{{ app_home }}/yolo-app"
+
+# Terraform Configuration
+terraform_dir: "{{ playbook_dir }}/../terraform"
+terraform_state_file: "{{ terraform_dir }}/terraform.tfstate"
+terraform_auto_vars: "{{ terraform_dir }}/terraform.tfvars"
+
+# Docker configuration
+docker_packages:
+  - docker.io
+  - docker-compose
+  - python3-docker
+
+docker_network: yolo-net
+docker_compose_version: "2.5.0"
+
+# Service ports
+frontend_port: 3000
+backend_port: 5000
+mongodb_port: 27017
+
+# MongoDB configuration
+mongodb_container_name: yolo-mongo
+mongodb_image: mongo:6.0
+mongodb_data_dir: "{{ app_deploy_dir }}/mongo-data"
+mongodb_uri: "mongodb://{{ mongodb_container_name }}:{{ mongodb_port }}/yolomy"
+
+# Backend configuration
+backend_container_name: yolo-backend
+backend_image: mainlymwaura/yolo-backend:1.0.0
+backend_port_internal: 5000
+backend_port_external: 5000
+
+# Frontend configuration
+frontend_container_name: yolo-client
+frontend_image: mainlymwaura/yolo-client:1.0.0
+frontend_port_internal: 80
+frontend_port_external: 3000
+react_app_api_url: "http://localhost:{{ backend_port_external }}"
+
+# Logging and monitoring
+enable_service_logs: true
+log_level: info

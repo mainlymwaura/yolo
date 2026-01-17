@@ -1,0 +1,102 @@
+---
+# Terraform Provisioning Role
+# This role manages Terraform resource provisioning using Ansible's terraform module
+
+- name: "Initialize Terraform working directory"
+  block:
+    - name: "Check if Terraform is installed"
+      command: terraform --version
+      register: terraform_version
+      changed_when: false
+
+    - name: "Display Terraform version"
+      debug:
+        msg: "{{ terraform_version.stdout_lines[0] }}"
+
+    - name: "Initialize Terraform"
+      terraform:
+        project_path: "{{ terraform_dir }}"
+        state: present
+        force_init: false
+      register: terraform_init
+
+    - name: "Display Terraform initialization result"
+      debug:
+        msg: "Terraform initialized successfully"
+
+  tags: ["terraform-init"]
+
+- name: "Plan Terraform deployment"
+  block:
+    - name: "Generate Terraform plan"
+      terraform:
+        project_path: "{{ terraform_dir }}"
+        state: planned
+        plan_file: "{{ terraform_dir }}/tfplan"
+      register: terraform_plan
+
+    - name: "Display Terraform plan summary"
+      debug:
+        msg: |
+          Terraform plan generated.
+          Changes to apply: {{ terraform_plan.stdout_lines | length if terraform_plan.stdout_lines is defined else 'N/A' }}
+
+  tags: ["terraform-plan"]
+
+- name: "Apply Terraform configuration"
+  block:
+    - name: "Apply Terraform plan to provision resources"
+      terraform:
+        project_path: "{{ terraform_dir }}"
+        state: present
+        plan_file: "{{ terraform_dir }}/tfplan"
+      register: terraform_apply
+
+    - name: "Extract VM IP from Terraform outputs"
+      set_fact:
+        vm_ip: "{{ terraform_apply.outputs.vm_ip.value | default('192.168.33.20') }}"
+        vm_hostname: "{{ terraform_apply.outputs.vm_hostname.value | default('yolo-app-server-tf') }}"
+
+    - name: "Display provisioned resources"
+      debug:
+        msg:
+          - "Resources provisioned successfully!"
+          - "VM Hostname: {{ vm_hostname }}"
+          - "VM IP Address: {{ vm_ip }}"
+
+  tags: ["terraform-apply"]
+
+- name: "Configure Ansible to use provisioned resources"
+  block:
+    - name: "Create inventory for provisioned VM"
+      copy:
+        content: |
+          [all]
+          {{ vm_hostname }} ansible_host={{ vm_ip }} ansible_user=vagrant
+          
+          [webservers]
+          {{ vm_hostname }}
+        dest: "{{ playbook_dir }}/inventory-stage2.ini"
+      register: inventory_created
+
+    - name: "Display inventory file location"
+      debug:
+        msg: "Inventory file created at {{ inventory_created.dest }}"
+
+  tags: ["terraform-inventory"]
+
+- name: "Wait for VM to be ready"
+  block:
+    - name: "Wait for SSH connectivity to VM"
+      wait_for:
+        host: "{{ vm_ip }}"
+        port: 22
+        delay: 10
+        timeout: 300
+      ignore_errors: true
+
+    - name: "VM is ready for configuration"
+      debug:
+        msg: "Terraform-provisioned VM is ready at {{ vm_ip }}"
+
+  tags: ["terraform-readiness"]

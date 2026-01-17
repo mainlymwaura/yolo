@@ -1,0 +1,12 @@
+# Terraform Variables File
+# This file can be overridden with -var-file flag
+
+# Uncomment and modify below values to customize deployment
+
+# vagrant_box           = "bento/ubuntu-20.04"
+# vm_hostname           = "yolo-app-server-tf"
+# vm_memory             = 2048
+# vm_cpus               = 2
+# private_network_ip    = "192.168.33.20"
+# app_repo_url          = "https://github.com/mainlymwaura/YOLO.git"
+# app_repo_branch       = "main"
