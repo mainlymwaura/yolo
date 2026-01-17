@@ -1,0 +1,79 @@
+---
+# Frontend Role Tasks
+# This role handles the deployment of the React frontend container
+
+- name: "Prepare frontend deployment"
+  block:
+    - name: "Pull frontend Docker image"
+      docker_image:
+        name: "{{ frontend_image }}"
+        source: pull
+        state: present
+      environment:
+        DOCKER_HOST: "unix:///run/docker.sock"
+
+  tags: ["frontend-setup"]
+
+- name: "Deploy frontend container"
+  block:
+    - name: "Start frontend container"
+      docker_container:
+        name: "{{ frontend_container_name }}"
+        image: "{{ frontend_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ frontend_port_external }}:{{ frontend_port_internal }}"
+        networks:
+          - name: "{{ docker_network }}"
+        env:
+          REACT_APP_API_URL: "{{ react_app_api_url }}"
+        depends_on:
+          - "{{ backend_container_name }}"
+      environment:
+        DOCKER_HOST: "unix:///run/docker.sock"
+
+    - name: "Wait for frontend service to be ready"
+      wait_for:
+        host: localhost
+        port: "{{ frontend_port_external }}"
+        delay: 10
+        timeout: 60
+
+    - name: "Display frontend deployment status"
+      debug:
+        msg:
+          - "Frontend container deployed successfully"
+          - "Container name: {{ frontend_container_name }}"
+          - "Image: {{ frontend_image }}"
+          - "Application URL: http://localhost:{{ frontend_port_external }}"
+          - "API endpoint: {{ react_app_api_url }}"
+
+  tags: ["frontend-deploy"]
+
+- name: "Verify application health"
+  block:
+    - name: "Check frontend accessibility"
+      uri:
+        url: "http://localhost:{{ frontend_port_external }}"
+        method: GET
+        status_code: 200
+      register: frontend_health
+      retries: 3
+      delay: 5
+      until: frontend_health.status == 200
+
+    - name: "Application is healthy"
+      debug:
+        msg: "Frontend application is responding correctly!"
+
+  tags: ["frontend-health-check"]
+
+  handlers:
+    - name: restart frontend container
+      docker_container:
+        name: "{{ frontend_container_name }}"
+        state: restarted
+      environment:
+        DOCKER_HOST: "unix:///run/docker.sock"
+      listen: "restart frontend"

@@ -1,0 +1,76 @@
+---
+# Main Ansible Playbook for YOLO E-commerce Application
+# This playbook orchestrates the deployment of a containerized e-commerce application
+# with MongoDB, Node.js backend, and React frontend services
+
+- name: "YOLO E-commerce Application Deployment"
+  hosts: all
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+
+  pre_tasks:
+    - name: "Update system packages"
+      block:
+        - name: "Update apt cache"
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+          tags: ["always", "system-update"]
+
+        - name: "Upgrade all packages"
+          apt:
+            upgrade: dist
+          tags: ["always", "system-update"]
+
+  roles:
+    - role: docker-setup
+      tags: ["docker", "infrastructure"]
+    
+    - role: mongodb
+      tags: ["mongodb", "database"]
+    
+    - role: backend
+      tags: ["backend", "application"]
+    
+    - role: frontend
+      tags: ["frontend", "application"]
+
+  post_tasks:
+    - name: "Verify Application Deployment"
+      block:
+        - name: "Wait for backend service to be ready"
+          wait_for:
+            host: localhost
+            port: 5000
+            delay: 5
+            timeout: 60
+          tags: ["verification", "health-check"]
+
+        - name: "Wait for frontend service to be ready"
+          wait_for:
+            host: localhost
+            port: 3000
+            delay: 5
+            timeout: 60
+          tags: ["verification", "health-check"]
+
+        - name: "Display deployment summary"
+          debug:
+            msg:
+              - "========================================="
+              - "YOLO E-commerce Application is Ready!"
+              - "========================================="
+              - "Frontend: http://localhost:3000"
+              - "Backend API: http://localhost:5000"
+              - "MongoDB: mongodb://localhost:27017"
+              - "========================================="
+          tags: ["always"]
+
+  handlers:
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+        enabled: yes
+      listen: "restart docker"

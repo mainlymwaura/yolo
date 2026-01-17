@@ -1,0 +1,78 @@
+---
+# Backend Role Tasks
+# This role handles the deployment of the Node.js backend container
+
+- name: "Clone application repository"
+  block:
+    - name: "Check if repository already exists"
+      stat:
+        path: "{{ app_deploy_dir }}"
+      register: app_repo_stat
+
+    - name: "Clone YOLO application repository"
+      git:
+        repo: "{{ app_repo_url }}"
+        dest: "{{ app_deploy_dir }}"
+        version: "{{ app_repo_branch }}"
+        update: yes
+      when: not app_repo_stat.stat.exists or app_repo_stat.stat.isdir
+
+    - name: "Change repository ownership"
+      file:
+        path: "{{ app_deploy_dir }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        recurse: yes
+
+  tags: ["backend-repo"]
+
+- name: "Prepare backend deployment"
+  block:
+    - name: "Pull backend Docker image"
+      docker_image:
+        name: "{{ backend_image }}"
+        source: pull
+        state: present
+      environment:
+        DOCKER_HOST: "unix:///run/docker.sock"
+
+  tags: ["backend-setup"]
+
+- name: "Deploy backend container"
+  block:
+    - name: "Start backend container"
+      docker_container:
+        name: "{{ backend_container_name }}"
+        image: "{{ backend_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ backend_port_external }}:{{ backend_port_internal }}"
+        networks:
+          - name: "{{ docker_network }}"
+        env:
+          PORT: "{{ backend_port_internal }}"
+          MONGODB_URI: "{{ mongodb_uri }}"
+          NODE_ENV: "production"
+        depends_on:
+          - "{{ mongodb_container_name }}"
+      environment:
+        DOCKER_HOST: "unix:///run/docker.sock"
+
+    - name: "Wait for backend service to be ready"
+      wait_for:
+        host: localhost
+        port: "{{ backend_port_external }}"
+        delay: 10
+        timeout: 60
+
+    - name: "Display backend deployment status"
+      debug:
+        msg:
+          - "Backend container deployed successfully"
+          - "Container name: {{ backend_container_name }}"
+          - "Image: {{ backend_image }}"
+          - "API endpoint: http://localhost:{{ backend_port_external }}"
+          - "MongoDB URI: {{ mongodb_uri }}"
+
+  tags: ["backend-deploy"]
