@@ -5,7 +5,7 @@ app_user: vagrant
 app_group: vagrant
 app_home: /home/vagrant
 app_repo_url: https://github.com/mainlymwaura/YOLO.git
-app_repo_branch: main
+app_repo_branch: master
 app_deploy_dir: "{{ app_home }}/yolo-app"
 
 # Docker configuration

@@ -70,7 +70,7 @@
         networks:
           - name: "{{ docker_network }}"
         env:
-          PORT: "{{ backend_port_internal }}"
+          PORT: "{{ backend_port_internal | string }}"
           MONGODB_URI: "{{ mongodb_uri }}"
           NODE_ENV: "production"
 
