@@ -1,3 +1,4 @@
+
 # 🛒 YOLO E-commerce DevOps Project
 
 ## 📋 Overview
@@ -13,10 +14,12 @@ cd yolo
 
 # 2. Provision the VM and deploy the application (takes 10-15 minutes)
 vagrant up
+Access the application:
 
-# 3. Access the application
-#    Frontend: http://localhost:3000
-#    Backend API: http://localhost:5000/api/products
+Frontend (Web Interface): http://localhost:3000
+
+Backend API: http://localhost:5000/api/products
+
 That's it! The vagrant up command handles everything: creating the virtual machine, installing Docker, pulling the application images, and starting all services.
 
 🏗️ Architecture & Tech Stack
