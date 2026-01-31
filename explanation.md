@@ -1,428 +1,369 @@
-# YOLO E-commerce Application - Ansible Configuration Management
+# YOLO Kubernetes Deployment - Implementation Explanation
 
 ## Overview
+This document provides a detailed explanation of the Kubernetes implementation for the YOLO application (MongoDB, Node.js Backend, React Frontend). The deployment follows best practices for production-grade distributed systems on Google Kubernetes Engine (GKE).
 
-This document explains the Ansible playbook structure for automating the deployment of the YOLO e-commerce application on a Vagrant-provisioned Ubuntu 20.04 virtual machine. The playbook uses roles, blocks, tags, and variables to ensure modular, maintainable, and easily auditable infrastructure-as-code.
+---
 
-## Project Architecture
+## 1. Choice of Kubernetes Objects and StatefulSet Implementation
 
-The YOLO application is a containerized e-commerce platform with the following microservices:
+### Decision: Use of StatefulSets for MongoDB
 
-1. **MongoDB** - NoSQL database for product and order persistence
-2. **Node.js Backend** - REST API server handling business logic
-3. **React Frontend** - Modern SPA for user interface
-4. **Docker Network** - Custom bridge network for inter-container communication
+**Rationale:**
+I chose to implement **StatefulSets** for MongoDB deployment rather than Deployments because:
 
-## Playbook Execution Flow
+1. **Stable Network Identity**: StatefulSets provide stable, predictable pod names (mongodb-0, mongodb-1, etc.) which are essential for database connectivity. MongoDB clients need to reliably connect to the same pod instance.
 
-The main playbook (`site.yml`) executes in the following sequential order:
+2. **Persistent Storage Association**: StatefulSets ensure that each replica maintains its own persistent volume. If mongodb-0 is recreated, it automatically attaches to its original PersistentVolumeClaim, preserving data integrity.
 
-### 1. **Pre-tasks: System Preparation**
-```yaml
-- Update system packages via apt cache refresh
-- Upgrade all installed packages to latest stable versions
-```
-**Purpose**: Ensures the system is up-to-date before infrastructure deployment
-**Tags**: `always`, `system-update`
+3. **Ordered Pod Management**: StatefulSets create and terminate pods in order, ensuring controlled startup and graceful shutdown—critical for database consistency.
 
-### 2. **Role: docker-setup**
-**Execution Order**: First  
-**Purpose**: Install and configure Docker and Docker Compose  
-**Tasks Sequence**:
+4. **Headless Service**: The StatefulSet uses a headless service (clusterIP: None), allowing direct pod-to-pod DNS communication using the FQDN pattern (mongodb-0.mongodb.yolo-app.svc.cluster.local).
 
-#### Block 1: Docker Installation
-- Install system prerequisites (apt-transport-https, curl, gnupg, etc.)
-- Add Docker's official GPG key to system keyring
-- Register Docker's APT repository for Ubuntu
-- Install docker.io, docker-compose, and python3-docker packages
+5. **Graceful Termination**: With terminationGracePeriodSeconds: 30, MongoDB gets sufficient time to flush in-memory data and close connections cleanly.
 
-#### Block 2: Docker Configuration
-- Start Docker daemon and enable auto-start on boot
-- Add vagrant user to docker group (privilege escalation for container operations)
+### Other Objects Implemented
 
-#### Block 3: Docker Compose Installation
-- Download Docker Compose binary from official release repository
-- Set executable permissions and verify installation
-- Display installed Docker Compose version
+- **Deployments**: Used for stateless services (Backend API and Frontend)
+  - 2 replicas for high availability
+  - Rolling update strategy for zero-downtime deployments
+  - Pod anti-affinity to spread replicas across nodes
 
-#### Block 4: Network Setup
-- Create custom bridge network named `yolo-net` for container communication
-- This network enables DNS-based service discovery between containers
+- **Services**:
+  - **ClusterIP** for Backend: Internal service discovery within the cluster
+  - **LoadBalancer** for Frontend: External exposure to internet traffic
+  - **Headless Service** for MongoDB: Direct pod DNS resolution
 
-**Why Docker-setup First?**: Docker must be installed before any container-based roles can execute. This is a hard dependency.
+- **ConfigMaps**: Store non-sensitive configuration (API URL, Node environment)
+- **Secrets**: Manage sensitive data (MongoDB credentials)
+- **Namespace**: Isolate YOLO application resources from system namespaces
+- **StorageClass**: Define SSD storage for performance
 
-### 3. **Role: mongodb**
-**Execution Order**: Second  
-**Purpose**: Deploy MongoDB container for data persistence  
-**Tasks Sequence**:
+---
 
-#### Block 1: Preparation
-- Create data persistence directory: `/home/vagrant/yolo-app/mongo-data`
-- Pull MongoDB 6.0 image from Docker Hub
-- Set directory ownership to vagrant user
+## 2. Method Used to Expose Pods to Internet Traffic
 
-#### Block 2: Container Deployment
-- Launch MongoDB container in detached mode
-- Mount local volume for persistent data storage
-- Connect to custom `yolo-net` bridge network
-- Configure root credentials (admin/password)
-- Expose MongoDB port 27017
-- Set restart policy to `unless-stopped`
-- Wait up to 30 seconds for MongoDB to be ready
+### Frontend Exposure Strategy
 
-**Environment Variables**:
-- `MONGO_INITDB_ROOT_USERNAME`: admin
-- `MONGO_INITDB_ROOT_PASSWORD`: password
+**LoadBalancer Service**
+- The frontend Deployment is exposed via a **LoadBalancer** service type
+- In GKE, this automatically provisions a Google Cloud Load Balancer
+- The load balancer distributes traffic across all frontend pod replicas
+- External clients access the application via: `EXTERNAL_IP:80`
 
-**Why MongoDB Second?**: Backend service depends on MongoDB for data persistence. MongoDB must be running before backend deployment.
-
-### 4. **Role: backend**
-**Execution Order**: Third  
-**Purpose**: Deploy Node.js backend REST API  
-**Tasks Sequence**:
-
-#### Block 1: Repository Cloning
-- Check if application code already exists locally
-- Clone YOLO repository from GitHub (`https://github.com/mainlymwaura/YOLO.git`)
-- Checkout specified branch (default: `main`)
-- Update ownership to vagrant user
-
-#### Block 2: Image Preparation
-- Pull pre-built backend image from Docker Hub
-- Uses image: `mainlymwaura/yolo-backend:1.0.0`
-
-#### Block 3: Container Deployment
-- Launch backend container connected to `yolo-net`
-- Expose port 5000 for API access
-- Set environment variables:
-  - `PORT`: 5000 (internal port)
-  - `MONGODB_URI`: mongodb://yolo-mongo:27017/yolomy (connects to MongoDB container)
-  - `NODE_ENV`: production
-- Wait up to 60 seconds for backend service to accept connections
-
-**MongoDB Integration**: Uses Docker DNS to connect to MongoDB container by hostname (`yolo-mongo`)
-
-**Why Backend Third?**: Backend depends on MongoDB being operational. Frontend depends on backend API.
-
-### 5. **Role: frontend**
-**Execution Order**: Fourth  
-**Purpose**: Deploy React frontend SPA  
-**Tasks Sequence**:
-
-#### Block 1: Image Preparation
-- Pull pre-built frontend image from Docker Hub
-- Uses image: `mainlymwaura/yolo-client:1.0.0`
-
-#### Block 2: Container Deployment
-- Launch frontend container
-- Expose port 3000 (mapped from container port 80)
-- Set environment variable:
-  - `REACT_APP_API_URL`: http://localhost:5000
-- Enable service restart unless explicitly stopped
-
-#### Block 3: Health Verification
-- Poll frontend HTTP endpoint up to 60 seconds
-- Confirm 200 OK response from frontend
-- Retry up to 3 times with 5-second intervals
-
-**Why Frontend Last?**: Frontend is the user-facing layer and can only operate effectively when backend is ready. Testing happens after all services are deployed.
-
-### 6. **Post-tasks: Deployment Verification**
-
-#### Block 1: Service Health Checks
-- Wait for backend API to respond on port 5000
-- Wait for frontend web server to respond on port 3000
-
-#### Block 2: Summary Display
-- Display deployment success message with service URLs
-- Format: Clear, human-readable confirmation of running services
-
-## Variables and Configuration Management
-
-### Global Variables (`group_vars/all.yml`)
-
-Variables are centralized in a single file for easy management and modification:
+### Implementation Details
 
 ```yaml
-# Application Metadata
-app_name: yolo
-app_user: vagrant
-app_home: /home/vagrant
-app_deploy_dir: /home/vagrant/yolo-app
-
-# Repository Configuration
-app_repo_url: https://github.com/mainlymwaura/YOLO.git
-app_repo_branch: main
-
-# Docker Configuration
-docker_network: yolo-net
-docker_compose_version: "2.5.0"
-
-# Service Identifiers
-mongodb_container_name: yolo-mongo
-backend_container_name: yolo-backend
-frontend_container_name: yolo-client
-
-# Image References
-mongodb_image: mongo:6.0
-backend_image: mainlymwaura/yolo-backend:1.0.0
-frontend_image: mainlymwaura/yolo-client:1.0.0
-
-# Service Ports
-frontend_port: 3000
-backend_port: 5000
-mongodb_port: 27017
-
-# Connection Strings
-mongodb_uri: mongodb://yolo-mongo:27017/yolomy
-react_app_api_url: http://localhost:5000
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: frontend
 ```
 
-### Role-Specific Variables
+**Why LoadBalancer?**
+- Provides a single, stable external IP address
+- Automatically manages traffic distribution
+- Handles health checks and failover
+- Industry-standard approach for exposing applications
 
-Each role contains a `vars/main.yml` file for role-specific configuration:
+### Internal Communication
 
-- `roles/docker-setup/vars/main.yml`: Docker Compose version
-- `roles/mongodb/vars/main.yml`: MongoDB-specific defaults (currently inherits from group vars)
-- `roles/backend/vars/main.yml`: Backend-specific configuration
-- `roles/frontend/vars/main.yml`: Frontend-specific configuration
+- **Backend Service**: Uses ClusterIP for internal communication only
+- **DNS Resolution**: Services use Kubernetes DNS (service-name.namespace.svc.cluster.local)
+- **Pod-to-Pod**: Backend pods resolve mongodb via DNS to the headless MongoDB service
+- **Security**: Only the frontend LoadBalancer is exposed externally; backend is internal
 
-## Blocks and Tags
+---
 
-### Tags Usage
+## 3. Use of Persistent Storage
 
-Tags enable selective playbook execution for debugging and CI/CD pipelines:
+### PersistentVolume Implementation
+
+**StorageClass: fast-ssd**
+- Provisioner: Kubernetes GCE PD (Persistent Disks)
+- Type: pd-ssd (SSD storage for performance)
+- Replication: regional-pd (data replicated across zones)
+- Expansion: enabled (volumes can be resized if needed)
+
+**PersistentVolumeClaim (PVC)**
+- Name: mongo-pvc
+- Size: 5Gi
+- Access Mode: ReadWriteOnce (single pod access at a time)
+- Storage Class: fast-ssd
+
+### Data Persistence Guarantee
+
+**StatefulSet volumeClaimTemplates**
+- Each StatefulSet replica gets its own PVC
+- PVCs persist even when pods are deleted
+- When a pod restarts, Kubernetes reattaches the same PVC
+- **Critical Guarantee**: Deleting a pod does NOT delete its data
+
+```yaml
+volumeClaimTemplates:
+- metadata:
+    name: mongo-storage
+  spec:
+    resources:
+      requests:
+        storage: 5Gi
+```
+
+### Data Backup Implications
+
+The persistent volume ensures:
+1. **Pod Deletion**: Data remains in the PVC
+2. **Pod Recreation**: New pod automatically mounts the same PVC
+3. **Cluster Upgrade**: PVCs persist independently from pod lifecycle
+4. **Cart Items Persistence**: All items added to the cart are stored in MongoDB, which persists in the PVC
+
+**Testing Procedure**:
+1. Add items to cart in the application
+2. Delete the MongoDB pod: `kubectl delete pod mongodb-0 -n yolo-app`
+3. Kubernetes automatically creates a new pod and reattaches the PVC
+4. Verify items still exist in the database
+
+---
+
+## 4. Git Workflow and Development Process
+
+### Commit Strategy
+
+Implemented a comprehensive git workflow with descriptive commits:
+
+1. **Initial Setup**: k8s manifest directory structure creation
+2. **Infrastructure**: Namespace, Storage, Secrets, ConfigMaps
+3. **Database**: MongoDB StatefulSet with persistent volumes
+4. **Backend**: Deployment with service discovery
+5. **Frontend**: Deployment with external LoadBalancer service
+6. **Documentation**: explanation.md and README updates
+7. **Deployment**: GKE cluster setup and manifest application
+
+Each commit represents a logical unit of work that can be independently reviewed and understood.
+
+### Branch Strategy
+
+- **Main Branch**: Production-ready manifests and code
+- **Feature Commits**: One feature per commit (e.g., "Add MongoDB StatefulSet with PVC")
+- **Atomic Commits**: Each commit is a complete, working unit
+
+### Documentation
+
+- **explanation.md**: Detailed technical reasoning for implementation choices
+- **README.md**: Step-by-step deployment instructions and live application URL
+- **Manifest Files**: Inline YAML comments for clarity
+
+---
+
+## 5. Labels and Annotations
+
+### Labels Implementation
+
+**Purpose**: Enable service discovery, pod selection, and management
+
+```yaml
+labels:
+  app: mongodb          # Application identifier
+  tier: data           # Layer in architecture
+```
+
+**Usage**:
+- **Service Selectors**: Services use labels to find pods to route to
+- **Deployments**: Selectors match pods to deployments
+- **Monitoring**: Labels enable filtering by application/tier
+- **Network Policies**: Can restrict traffic based on labels
+
+### Annotations
+
+**Purpose**: Add metadata without affecting pod scheduling
+
+```yaml
+annotations:
+  description: "MongoDB database for YOLO application"
+```
+
+**Used for**:
+- Documentation and tracking
+- Integration with external tools
+- Monitoring and observability
+
+---
+
+## 6. Best Practices Implemented
+
+### Container Image Tagging
+
+**Standard Followed**: `registry/namespace/app:version`
+
+Example:
+```
+mainlymwaura/yolo-backend:1.0.0
+mainlymwaura/yolo-client:1.0.0
+mongo:6.0
+```
+
+**Benefits**:
+- Version tracking for rollbacks
+- Clear identification of images
+- Prevents "latest" tag issues
+- Enables blue-green deployments
+
+### Resource Requests and Limits
+
+**Example**:
+```yaml
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+```
+
+**Purpose**:
+- Ensures node has sufficient capacity
+- Prevents pod starvation
+- Enables proper scheduling
+- Limits resource hogging
+
+### Health Checks
+
+**Implemented**:
+- **Liveness Probe**: Detects dead containers and restarts them
+- **Readiness Probe**: Determines if pod is ready to receive traffic
+
+**MongoDB**:
+```yaml
+livenessProbe:
+  exec:
+    command:
+    - mongosh
+    - --eval
+    - "db.adminCommand('ping')"
+  initialDelaySeconds: 30
+```
+
+### High Availability
+
+- **Replicas**: 2 replicas each for backend and frontend
+- **Pod Anti-Affinity**: Spreads pods across different nodes
+- **Rolling Updates**: Zero-downtime deployments
+- **Service Redundancy**: Multiple pods handle failure
+
+### Security
+
+- **Namespace Isolation**: Dedicated namespace for application
+- **Secrets Management**: MongoDB credentials in Secrets, not ConfigMaps
+- **RBAC Ready**: Manifests can be paired with Network Policies
+- **Health Checks**: Automatic restart of failed containers
+
+---
+
+## 7. Application Functionality
+
+### Expected Behavior
+
+The YOLO application allows users to:
+1. Browse products
+2. Add products to cart
+3. Persist cart items in MongoDB
+4. View cart contents
+
+### Cart Item Persistence Test
+
+**Procedure**:
+1. Add items to cart via frontend UI
+2. Verify items appear in MongoDB
+3. Delete MongoDB pod
+4. Items persist after pod recreation
+
+### API Integration
+
+- **Frontend**: Accesses Backend via environment variable `REACT_APP_API_URL`
+- **Backend**: Connects to MongoDB via `MONGODB_URI` from ConfigMap
+- **Service Discovery**: Kubernetes DNS resolves service names automatically
+
+---
+
+## 8. Debugging and Troubleshooting
+
+### Common Commands
 
 ```bash
-# Run only Docker setup
-ansible-playbook site.yml --tags "docker"
+# Check pod status
+kubectl get pods -n yolo-app
 
-# Run only application deployment
-ansible-playbook site.yml --tags "application"
+# View pod logs
+kubectl logs <pod-name> -n yolo-app
 
-# Run health checks only
-ansible-playbook site.yml --tags "verification,health-check"
+# Check service endpoints
+kubectl get svc -n yolo-app
 
-# Run everything except system updates
-ansible-playbook site.yml --skip-tags "system-update"
+# Describe resource for detailed info
+kubectl describe pod <pod-name> -n yolo-app
+
+# Test connectivity
+kubectl exec <pod-name> -n yolo-app -- curl http://backend-service:5000
 ```
 
-### Tag Hierarchy
+### Potential Issues and Solutions
 
-- `always`: Tasks that run regardless of tag filters
-- `docker`: All Docker-related tasks
-- `infrastructure`: Infrastructure setup (networks, volumes)
-- `database`: MongoDB deployment
-- `application`: Backend and frontend deployments
-- `verification`: Health checks and validation
+1. **CrashLoopBackOff**: Check logs with `kubectl logs` to see error messages
+2. **Pending Pods**: Check if StorageClass or nodes are available
+3. **Connection Refused**: Verify service DNS names and ports
+4. **ImagePullBackOff**: Ensure Docker images are pushed to Docker Hub
 
-### Blocks Structure
+---
 
-Blocks logically group related tasks within roles:
+## Manifest Files Overview
 
-1. **Installation Blocks**: Install software and dependencies
-2. **Configuration Blocks**: Configure services and permissions
-3. **Deployment Blocks**: Deploy containers and services
-4. **Verification Blocks**: Health checks and validation
+### File Structure in `/k8s` Directory
 
-Benefits of blocks:
-- Clear organization and readability
-- Error handling at block level if needed
-- Logical grouping for understanding execution flow
-- Potential for block-level error handling (rescue/always)
+1. **01-namespace.yaml**: Creates `yolo-app` namespace for isolation
+2. **02-storage.yaml**: Defines StorageClass and PersistentVolumeClaim
+3. **03-mongodb-statefulset.yaml**: MongoDB StatefulSet with health checks
+4. **04-secrets-configmap.yaml**: Credentials and configuration
+5. **05-backend-deployment.yaml**: Node.js backend with 2 replicas
+6. **06-frontend-deployment.yaml**: React frontend with LoadBalancer service
 
-## Ansible Modules Used
+### Deployment Order
 
-### Core Modules
-
-| Module | Role | Purpose |
-|--------|------|---------|
-| `apt` | docker-setup | Package management (install/upgrade) |
-| `apt_key` | docker-setup | Manage GPG keys for repositories |
-| `apt_repository` | docker-setup | Add/remove APT repositories |
-| `systemd` | docker-setup | Manage system services (Docker daemon) |
-| `user` | docker-setup | Manage user accounts and groups |
-| `get_url` | docker-setup | Download files from URLs |
-| `command` | docker-setup | Execute arbitrary shell commands |
-| `stat` | backend | Get file/directory facts |
-| `file` | backend, mongodb | Manage file permissions and ownership |
-| `git` | backend | Clone and manage Git repositories |
-| `wait_for` | all roles | Wait for services to become available |
-| `debug` | all roles | Display messages during execution |
-| `uri` | frontend | Make HTTP requests for health checks |
-
-### Community Docker Modules
-
-| Module | Purpose |
-|--------|---------|
-| `community.docker.docker_network` | Create custom Docker networks |
-| `community.docker.docker_image` | Pull/manage Docker images |
-| `community.docker.docker_container` | Deploy and manage containers |
-
-## Vagrant Integration
-
-### Vagrantfile Configuration
-
-```ruby
-# Box: bento/ubuntu-20.04 (pre-built, no special setup needed)
-# Memory: 2GB
-# CPU: 2 cores
-# Hostname: yolo-app-server
-# IP: 192.168.33.10
-
-# Port Forwarding:
-# - 3000 -> Frontend (React)
-# - 5000 -> Backend API (Node.js)
-```
-
-### Provisioning
-
-Vagrant uses `ansible_local` provisioner, which:
-1. Copies the playbook to the VM
-2. Installs Ansible on the VM if not present
-3. Runs the playbook locally on the VM
-4. Execution: `vagrant up` triggers full deployment
-
-## Data Persistence
-
-MongoDB data is stored in a volume mounted to the host system:
-
-```
-Host: /home/vagrant/yolo-app/mongo-data
-Container: /data/db
-```
-
-This ensures products added via the frontend persist across container restarts and VM reboots.
-
-## Execution Timeline
-
-```
-vagrant up
-    ↓
-Boot VM from Ubuntu 20.04 image
-    ↓
-Run Ansible playbook locally on VM
-    ↓
-1. Update system packages (~30s)
-    ↓
-2. Install Docker & Docker Compose (~60s)
-    ↓
-3. Create docker network
-    ↓
-4. Deploy MongoDB container (~10s)
-    ↓
-5. Deploy backend container (~30s)
-    ↓
-6. Deploy frontend container (~30s)
-    ↓
-7. Health checks (5s)
-    ↓
-✓ Application ready at http://localhost:3000
-```
-
-**Total approximate time**: 3-5 minutes from `vagrant up` to ready state
-
-## Error Handling Strategy
-
-### Wait Conditions
-
-Each service deployment includes explicit wait conditions:
-
-```yaml
-wait_for:
-  host: localhost
-  port: <service_port>
-  delay: <initial_delay>
-  timeout: <max_wait_time>
-```
-
-This prevents race conditions and ensures services are fully initialized before dependent services start.
-
-### Idempotency
-
-The playbook is designed to be idempotent:
-- Can run multiple times safely
-- Containers are checked before pulling images
-- Git repo clone only if directory doesn't exist
-- `docker_container` with `state: started` doesn't restart if already running
-
-## Testing the Deployment
-
-### Manual Verification
-
-After `vagrant up` completes:
-
+Deploy in this order:
 ```bash
-# SSH into VM
-vagrant ssh
-
-# Check running containers
-docker ps
-
-# View logs
-docker logs yolo-mongo
-docker logs yolo-backend
-docker logs yolo-client
-
-# Test API connectivity
-curl http://localhost:5000/api/products
-
-# Test MongoDB connectivity
-docker exec -it yolo-mongo mongosh -u admin -p password
+kubectl apply -f k8s/01-namespace.yaml
+kubectl apply -f k8s/02-storage.yaml
+kubectl apply -f k8s/03-mongodb-statefulset.yaml
+kubectl apply -f k8s/04-secrets-configmap.yaml
+kubectl apply -f k8s/05-backend-deployment.yaml
+kubectl apply -f k8s/06-frontend-deployment.yaml
 ```
 
-### Browser Testing
+Or apply all at once:
+```bash
+kubectl apply -f k8s/
+```
 
-1. Open `http://localhost:3000`
-2. Add a product using the form
-3. Verify product appears in the list
-4. Restart containers: `docker restart yolo-backend yolo-mongo`
-5. Verify product still appears (data persistence test)
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: Port 3000 or 5000 already in use on host
-**Solution**: Modify Vagrantfile port forwarding to different ports
-
-**Issue**: Container fails to start
-**Solution**: Check logs with `docker logs <container_name>`
-
-**Issue**: Backend can't connect to MongoDB
-**Solution**: Verify containers are on same network: `docker network inspect yolo-net`
-
-**Issue**: Frontend shows "Cannot reach API"
-**Solution**: Verify `REACT_APP_API_URL` environment variable in container
-
-## Best Practices Demonstrated
-
-1. **Separation of Concerns**: Each role handles one aspect of deployment
-2. **DRY Principle**: Variables centralized, no value duplication
-3. **Documentation**: Clear task names and descriptions
-4. **Idempotency**: Safe to run multiple times
-5. **Error Handling**: Explicit wait conditions and health checks
-6. **Readability**: Blocks organize related tasks logically
-7. **Maintainability**: Easy to add services or modify configuration
-8. **Security**: User privilege escalation only where needed
+---
 
 ## Conclusion
 
-This playbook demonstrates enterprise-grade infrastructure automation using Ansible. The modular role structure, comprehensive variable management, and explicit health checks ensure reliable, repeatable deployments of the YOLO e-commerce application.
-- Validate connectivity by `curl`ing the backend endpoints (e.g., `curl http://localhost:5000/api/products`).
+This Kubernetes implementation follows enterprise best practices:
+- ✅ StatefulSets for stateful services (MongoDB)
+- ✅ Deployments for stateless services (Backend, Frontend)
+- ✅ Persistent volumes for data durability
+- ✅ Services for internal and external exposure
+- ✅ ConfigMaps and Secrets for configuration management
+- ✅ Health checks for reliability
+- ✅ Resource limits for stability
+- ✅ High availability through replicas
+- ✅ Proper labeling and organization
 
-7) Image tagging and DockerHub
-- Use semantic versioning for image tags, e.g., `your-dockerhub-username/yolo-backend:1.0.0` and `your-dockerhub-username/yolo-client:1.0.0`.
-- To push images: `docker build -t username/yolo-backend:1.0.0 ./backend` then `docker push username/yolo-backend:1.0.0`.
-- Include a screenshot of the image on DockerHub (the UI showing the tagged image) as part of the submission for verification.
-
-9) CI: GitHub Actions
-- A workflow `./github/workflows/docker-publish.yml` is included to build and push both images to DockerHub when commits are pushed to `dockerize` or `master`, or when tags are created.
-- To enable it, add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets in the repository settings.
-
-
-8) Running locally with Docker Compose
-- Build and run the stack: `docker compose up --build -d`
-- Stop and remove: `docker compose down -v` (removes volumes if requested).
-
-Notes: Replace `your-dockerhub-username` in `docker-compose.yml` and tagging commands with your DockerHub username before pushing the images.
+The application is now production-ready on GKE with full data persistence and high availability.
