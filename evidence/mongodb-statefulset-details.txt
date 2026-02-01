@@ -1,0 +1,47 @@
+Name:               mongodb
+Namespace:          yolo-app
+CreationTimestamp:  Sun, 01 Feb 2026 19:29:37 +0300
+Selector:           app=mongodb,tier=data
+Labels:             app=mongodb
+                    tier=data
+Annotations:        <none>
+Replicas:           1 desired | 1 total
+Update Strategy:    RollingUpdate
+  Partition:        0
+Pods Status:        1 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:       app=mongodb
+                tier=data
+  Annotations:  description: MongoDB database for YOLO application
+  Containers:
+   mongodb:
+    Image:      mongo:6.0
+    Port:       27017/TCP (mongodb)
+    Host Port:  0/TCP (mongodb)
+    Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:      250m
+      memory:   256Mi
+    Liveness:   exec [mongosh --eval db.adminCommand('ping')] delay=30s timeout=5s period=10s #success=1 #failure=3
+    Readiness:  exec [mongosh --eval db.adminCommand('ping')] delay=10s timeout=3s period=5s #success=1 #failure=3
+    Environment:
+      MONGO_INITDB_ROOT_USERNAME:  admin
+      MONGO_INITDB_ROOT_PASSWORD:  <set to the key 'password' in secret 'mongo-secret'>  Optional: false
+    Mounts:
+      /data/db from mongo-storage (rw)
+  Volumes:         <none>
+  Node-Selectors:  <none>
+  Tolerations:     <none>
+Volume Claims:
+  Name:          mongo-storage
+  StorageClass:  fast-ssd
+  Labels:        app=mongodb
+  Annotations:   <none>
+  Capacity:      5Gi
+  Access Modes:  [ReadWriteOnce]
+Events:
+  Type    Reason            Age                From                    Message
+  ----    ------            ----               ----                    -------
+  Normal  SuccessfulCreate  85s (x2 over 38m)  statefulset-controller  create Pod mongodb-0 in StatefulSet mongodb successful

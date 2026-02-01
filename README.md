@@ -2,6 +2,17 @@
 
 A MERN stack e-commerce application deployed on Google Kubernetes Engine (GKE) using Kubernetes best practices. This project demonstrates production-grade orchestration with StatefulSets for persistence, service discovery, and high availability.
 
+## 🚀 Live Application
+
+**Frontend URL:** [http://34.58.185.13](http://34.58.185.13)
+
+The application is currently running on GKE with:
+- ✅ 2 Frontend replicas (React)
+- ✅ 2 Backend API replicas (Node.js/Express)
+- ✅ 1 MongoDB StatefulSet (Persistent data)
+- ✅ Full Kubernetes orchestration and service discovery
+- ✅ Persistent storage (Google Persistent Disks, 5Gi per replica)
+
 ## Quick Start - Kubernetes Deployment
 
 ### Prerequisites
@@ -336,6 +347,51 @@ This project uses descriptive commits following the Git workflow:
 
 1. Feature commits for each Kubernetes object
 2. Clear commit messages explaining changes
+
+## Deployment Evidence
+
+### Active Kubernetes Objects (as of Feb 1, 2026)
+
+**Cluster Details:**
+- Location: GCP Region us-central1, Zone us-central1-a
+- Nodes: 3 (n1-standard-1 machines)
+- Kubernetes Version: 1.33.5-gke.2118001
+
+**Running Pods:**
+```
+FRONTEND:    2 replicas (nginx-based React app) - Ready 2/2
+BACKEND:     2 replicas (Node.js Express API) - Ready 2/2
+MONGODB:     1 replica (StatefulSet) - Ready 1/1
+```
+
+**Services:**
+- `frontend-service` (LoadBalancer): 34.58.185.13:80
+- `backend-service` (ClusterIP): 34.118.230.11:5000
+- `mongodb` (Headless): 10.x.x.x:27017
+
+**Storage:**
+- StorageClass: `fast-ssd` (Google Persistent Disk SSD, single-zone)
+- PersistentVolumeClaims: 2 (5Gi each)
+  - `mongo-pvc`: Main MongoDB PVC
+  - `mongo-storage-mongodb-0`: StatefulSet-managed PVC (auto-mounted)
+- Status: Both volumes Bound and operational
+
+### Verification Tests Performed
+
+✅ **Kubernetes Orchestration**: All manifests applied successfully, 5 pods running across 3 nodes
+✅ **Service Exposure**: Frontend accessible via LoadBalancer IP 34.58.185.13
+✅ **StatefulSet**: MongoDB deployed with stable networking and identity
+✅ **Persistent Storage**: Data persists across pod deletions (tested Feb 1, 2026)
+✅ **Product Management**: Add/Edit/Delete operations fully functional
+✅ **Persistence Test**: Deleted mongodb-0 pod → StatefulSet auto-recreated with same PVC binding
+
+### Evidence Files
+
+See `/evidence/` directory for:
+- Kubernetes resource manifests
+- kubectl output logs
+- Deployment status reports
+
 3. Minimum 10 commits documenting implementation progress
 4. All changes tracked in GitHub repository
 

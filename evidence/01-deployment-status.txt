@@ -1,0 +1,37 @@
+=== YOLO APPLICATION DEPLOYMENT EVIDENCE ===
+Date: February 1, 2026
+Platform: Google Kubernetes Engine (GKE)
+Project: amplified-land-484215-t8
+
+CLUSTER INFORMATION:
+Kubernetes control plane is running at https://34.61.123.240
+GLBCDefaultBackend is running at https://34.61.123.240/api/v1/namespaces/kube-system/services/default-http-backend:http/proxy
+KubeDNS is running at https://34.61.123.240/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://34.61.123.240/api/v1/namespaces/kube-system/services/https:metrics-server:/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+
+NODES:
+NAME                                          STATUS   ROLES    AGE   VERSION
+gke-yolo-cluster-default-pool-5e85e3a2-4z0j   Ready    <none>   56m   v1.33.5-gke.2118001
+gke-yolo-cluster-default-pool-5e85e3a2-tqbs   Ready    <none>   56m   v1.33.5-gke.2118001
+gke-yolo-cluster-default-pool-5e85e3a2-z41c   Ready    <none>   56m   v1.33.5-gke.2118001
+
+POD STATUS:
+NAME                        READY   STATUS    RESTARTS   AGE     IP            NODE                                          NOMINATED NODE   READINESS GATES
+backend-7c66cbb596-2498k    1/1     Running   0          27m     10.124.0.13   gke-yolo-cluster-default-pool-5e85e3a2-z41c   <none>           <none>
+backend-7c66cbb596-q5xbr    1/1     Running   0          27m     10.124.0.14   gke-yolo-cluster-default-pool-5e85e3a2-z41c   <none>           <none>
+frontend-7cbb85f665-2lwcg   1/1     Running   0          2m41s   10.124.2.12   gke-yolo-cluster-default-pool-5e85e3a2-4z0j   <none>           <none>
+frontend-7cbb85f665-lk7jq   1/1     Running   0          2m29s   10.124.1.14   gke-yolo-cluster-default-pool-5e85e3a2-tqbs   <none>           <none>
+mongodb-0                   1/1     Running   0          75s     10.124.1.15   gke-yolo-cluster-default-pool-5e85e3a2-tqbs   <none>           <none>
+
+SERVICES:
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+  File "/usr/lib/python3.10/subprocess.py", line 421, in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+  File "/usr/lib/python3.10/subprocess.py", line 505, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 1141, in communicate
+    stdout = self.stdout.read()
+KeyboardInterrupt
