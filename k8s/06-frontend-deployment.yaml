@@ -46,7 +46,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: mainlymwaura/yolo-client:1.0.0
+        image: gcr.io/amplified-land-484215-t8/yolo-client:2.1.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
