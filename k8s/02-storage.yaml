@@ -5,7 +5,7 @@ metadata:
 provisioner: kubernetes.io/gce-pd
 parameters:
   type: pd-ssd
-  replication-type: regional-pd
+  replication-type: none
 allowVolumeExpansion: true
 ---
 apiVersion: v1

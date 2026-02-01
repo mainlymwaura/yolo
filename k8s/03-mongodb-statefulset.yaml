@@ -65,8 +65,6 @@ spec:
         volumeMounts:
         - name: mongo-storage
           mountPath: /data/db
-        - name: mongo-config
-          mountPath: /etc/mongo
         livenessProbe:
           exec:
             command:
