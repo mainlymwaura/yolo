@@ -1,0 +1,29 @@
+=== KUBERNETES DEPLOYMENT EVIDENCE ===
+
+Pod Status:
+NAME                        READY   STATUS    RESTARTS   AGE   IP            NODE                                          NOMINATED NODE   READINESS GATES
+backend-7c66cbb596-2498k    1/1     Running   0          96s   10.124.0.13   gke-yolo-cluster-default-pool-5e85e3a2-z41c   <none>           <none>
+backend-7c66cbb596-q5xbr    1/1     Running   0          66s   10.124.0.14   gke-yolo-cluster-default-pool-5e85e3a2-z41c   <none>           <none>
+frontend-67ff8dd9f6-vb957   1/1     Running   0          14m   10.124.2.8    gke-yolo-cluster-default-pool-5e85e3a2-4z0j   <none>           <none>
+frontend-67ff8dd9f6-vpf4k   1/1     Running   0          14m   10.124.1.7    gke-yolo-cluster-default-pool-5e85e3a2-tqbs   <none>           <none>
+mongodb-0                   1/1     Running   0          12m   10.124.1.8    gke-yolo-cluster-default-pool-5e85e3a2-tqbs   <none>           <none>
+
+Services:
+NAME               TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)        AGE
+backend-service    ClusterIP      34.118.230.11   <none>         5000/TCP       17m
+frontend-service   LoadBalancer   34.118.238.88   34.58.185.13   80:31253/TCP   17m
+mongodb            ClusterIP      None            <none>         27017/TCP      17m
+
+Deployments:
+NAME       READY   UP-TO-DATE   AVAILABLE   AGE
+backend    2/2     2            2           14m
+frontend   2/2     2            2           14m
+
+StatefulSet:
+NAME      READY   AGE
+mongodb   1/1     12m
+
+Persistent Volumes:
+NAME                      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+mongo-pvc                 Bound    pvc-ae7bfe77-29e5-4b29-84c1-d3d95f9db5c2   5Gi        RWO            fast-ssd       <unset>                 14m
+mongo-storage-mongodb-0   Bound    pvc-001fdf36-eceb-497c-aa45-089bf9603864   5Gi        RWO            fast-ssd       <unset>                 15m

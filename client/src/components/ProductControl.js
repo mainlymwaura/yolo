@@ -159,21 +159,35 @@ class ProductControl extends Component {
         // }       
         // console.log(...formData)
         axios.post(`${API_BASE}/api/products`, newProduct)
-            .then(res => console.log(res.data))
-        this.setState({
-            formVisibleOnPage: false
-        })
+            .then(res => {
+                console.log(res.data)
+                // Refetch all products after adding new product
+                return axios.get(`${API_BASE}/api/products`)
+            })
+            .then(res => {
+                this.setState({
+                    actualProductList: res.data,
+                    formVisibleOnPage: false
+                })
+            })
+            .catch(error => console.log(error))
     };
     handleDeletingProduct = (id) =>{
         axios.delete(`${API_BASE}/api/products/`+id)
-            .then(res => console.log(res.data))
+            .then(res => {
+                console.log(res.data)
+                // Refetch all products after deletion
+                return axios.get(`${API_BASE}/api/products`)
+            })
+            .then(res => {
+                this.setState({
+                    actualProductList: res.data,
+                    formVisibleOnPage: false,
+                    selectedProduct: null
+                })
+            })
             .catch((error) =>{
                 console.log(error)
-            })
-            this.setState({
-                actualProductList: this.state.actualProductList.filter(product => product._id !== id),
-                formVisibleOnPage: false,
-                selectedProduct: null
             })
     }
     
@@ -186,13 +200,20 @@ class ProductControl extends Component {
     handleEditingProduct = (editedProduct) =>{
 
         axios.put(`${API_BASE}/api/products/` + this.state.selectedProduct._id, editedProduct)
-            .then(res =>console.log(res.data))
-        
-        this.setState({
-            editProduct: false,
-            formVisibleOnPage: false
-        })
-        window.location = '/';
+            .then(res => {
+                console.log(res.data)
+                // Refetch all products after edit
+                return axios.get(`${API_BASE}/api/products`)
+            })
+            .then(res => {
+                this.setState({
+                    actualProductList: res.data,
+                    editProduct: false,
+                    formVisibleOnPage: false,
+                    selectedProduct: null
+                })
+            })
+            .catch(error => console.log(error))
     }
 
     render() {
